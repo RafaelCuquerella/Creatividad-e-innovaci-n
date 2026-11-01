@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Parada en modo reto: un reto de un minuto mientras esperas el autobús o el metro.">
+<title>Parada en modo reto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: una pantalla de móvil (lo que abre el QR) centrada; en escritorio, junto a una nota breve del prototipo. */
+:root {
+  --bg: #f3f1ec;
+  --surface: #ffffff;
+  --sunk: #f7f4ee;
+  --ink: #1d1b19;
+  --muted: #6b655d;
+  --line: #ddd7cc;
+  --accent: #e8572a;      /* naranja del cartel */
+  --accent-ink: #ffffff;
+  --transit: #2f6db5;     /* azul línea de bus */
+  --led: #f6c945;         /* letras del panel de tiempos */
+  --panel: #232120;
+  --good: #2e8a57;
+  --bad: #c2412d;
+  --good-soft: #e3f3ea;
+  --bad-soft: #fbe6e1;
+  --display: "Bricolage Grotesque", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #161514; --surface: #221f1d; --sunk: #2a2623; --ink: #f1ede6; --muted: #a59d92; --line: #3a3531;
+  --accent: #f26a3f; --accent-ink: #1a0f0a; --transit: #5b93d6; --panel: #0e0d0c;
+  --good: #5cc28a; --bad: #ef7a63; --good-soft: #1d3327; --bad-soft: #3a2420; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #161514; --surface: #221f1d; --sunk: #2a2623; --ink: #f1ede6; --muted: #a59d92; --line: #3a3531;
+  --accent: #f26a3f; --accent-ink: #1a0f0a; --transit: #5b93d6; --panel: #0e0d0c;
+  --good: #5cc28a; --bad: #ef7a63; --good-soft: #1d3327; --bad-soft: #3a2420; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
+.wrap { display: flex; flex-wrap: wrap; gap: 40px; justify-content: center; align-items: flex-start;
+  padding-block: 32px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.note { max-width: 340px; min-width: 0; padding-top: 24px; }
+.note h1 { font-family: var(--display); font-weight: 800; font-size: 2.1rem; line-height: 1.05; margin: 0 0 12px; text-wrap: balance; }
+.note p { color: var(--muted); margin: 0 0 12px; }
+.note ol { margin: 0; padding-left: 20px; color: var(--muted); }
+.note li { margin-bottom: 6px; }
+.tag { display: inline-block; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+
+.phone { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line); border-radius: 28px; overflow: hidden;
+  box-shadow: 0 18px 40px -24px rgba(0,0,0,.35); display: flex; flex-direction: column; min-height: 660px; }
+.stopbar { background: var(--panel); color: var(--led); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.stopbar .stop { font-size: .82rem; opacity: .85; }
+.stopbar .eta { font-family: var(--display); font-weight: 800; font-size: 1.15rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.line { display: inline-grid; place-items: center; background: var(--transit); color: #fff; border-radius: 6px; font-weight: 700; font-size: .8rem; min-width: 28px; height: 22px; margin-right: 8px; }
+
+.player { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--sunk); border-bottom: 1px solid var(--line); font-size: .9rem; }
+.player .lvl { font-family: var(--display); font-weight: 800; color: var(--accent); white-space: nowrap; }
+.player .bar { flex: 1; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.player .bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
+.player .pts { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+
+.screen { padding: 22px 22px 22px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.screen h2 { font-family: var(--display); font-weight: 800; font-size: 1.6rem; line-height: 1.1; margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); margin: 0; }
+.daily { display: flex; flex-direction: column; gap: 2px; }
+.daily .d { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.topics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.topic { text-align: left; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 16px; padding: 14px;
+  font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 8px; min-height: 104px; }
+.topic:hover { border-color: var(--accent); }
+.topic .ico { width: 36px; height: 36px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); display: grid; place-items: center;
+  font-family: var(--display); font-weight: 800; font-size: 1.05rem; color: var(--accent); }
+.topic b { font-size: .98rem; line-height: 1.2; }
+.topic .s { color: var(--muted); font-size: .8rem; }
+.topic.done { opacity: .62; }
+.topic.done .s { color: var(--good); font-weight: 700; }
+button:focus-visible { outline: 3px solid var(--transit); outline-offset: 2px; }
+
+.qmeta { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--accent); }
+.opts { display: grid; gap: 10px; }
+.opt { border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 14px; padding: 14px 16px; font: inherit; text-align: left; cursor: pointer; }
+.opt:hover:not(:disabled) { border-color: var(--accent); }
+.opt.ok { border-color: var(--good); background: var(--good-soft); }
+.opt.ko { border-color: var(--bad); background: var(--bad-soft); }
+.opt:disabled { cursor: default; }
+
+.result { border-radius: 16px; padding: 14px 16px; background: var(--good-soft); display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.result.ko { background: var(--bad-soft); }
+.result h3 { margin: 0 0 4px; font-family: var(--display); font-size: 1.2rem; }
+.result p { margin: 0; }
+.gain { font-family: var(--display); font-weight: 800; font-size: 1.2rem; white-space: nowrap; color: var(--good); }
+.result.ko .gain { color: var(--bad); }
+.fact { border-left: 4px solid var(--transit); padding: 4px 0 4px 14px; }
+.fact .k { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--transit); }
+.fact p { margin: 4px 0 0; }
+.levelup { background: var(--panel); color: var(--led); border-radius: 14px; padding: 12px 14px; font-weight: 700; }
+
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rank li { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--sunk); font-variant-numeric: tabular-nums; }
+.rank li.me { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border: 1.5px solid var(--accent); font-weight: 700; }
+.rank .n { font-family: var(--display); font-weight: 800; color: var(--muted); }
+.small { font-size: .8rem; color: var(--muted); margin: 0; }
+
+.actions { margin-top: auto; display: grid; gap: 10px; }
+.btn { border: 0; border-radius: 14px; padding: 14px 16px; font: inherit; font-weight: 700; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.foot { font-size: .8rem; color: var(--muted); text-align: center; padding: 0 20px 18px; }
+.arrived { background: var(--transit); color: #fff; border-radius: 14px; padding: 12px 14px; font-weight: 700; }
+@media (prefers-reduced-motion: no-preference) { .screen { animation: in .25s ease-out; } @keyframes in { from { transform: translateY(6px); opacity: .6; } } }
+@media (prefers-reduced-motion: reduce) { .player .bar i { transition: none; } }
+</style>
+<style>body{margin:0} [hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="wrap">
+  <section class="note">
+    <div class="tag">Prototipo · Creatividad e Innovación</div>
+    <h1>Lo que abre el QR del cartel</h1>
+    <p>Simulación de la idea ganadora. Es una web, sin descargar ninguna app. Cada día hay retos nuevos de cuatro temáticas, y cada respuesta suma puntos para subir de nivel y escalar en el ranking de la parada.</p>
+    <ol>
+      <li>Elige una temática del reto del día.</li>
+      <li>Responde la pregunta, acertijo o curiosidad.</li>
+      <li>Lee la solución y suma puntos.</li>
+      <li>Mira el ranking o cierra cuando llegue el bus.</li>
+    </ol>
+    <p style="margin-top:12px">El tiempo de llegada está simulado y corre más rápido de lo normal. Los nombres del ranking son de ejemplo.</p>
+  </section>
+
+  <main class="phone" aria-live="polite">
+    <div class="stopbar">
+      <div class="stop"><span class="line">12</span>Parada Campus · Av. Universidad</div>
+      <div class="eta" id="eta">6 min</div>
+    </div>
+    <div class="player" id="player"></div>
+    <div id="view"></div>
+    <div class="foot">Sin registro ni descargas · Cierra la página cuando quieras</div>
+  </main>
+</div>
+
+<script>
+const TOPICS = [
+  { id: "cultura", ico: "C", t: "Cultura general" },
+  { id: "entretenimiento", ico: "E", t: "Entretenimiento" },
+  { id: "historia", ico: "H", t: "Historia" },
+  { id: "ciencia", ico: "S", t: "Ciencia" }
+];
+const RETOS = {
+  cultura: [
+    { tipo: "Pregunta", q: "¿Cuál es el río más largo de la península ibérica?", o: ["El Ebro", "El Tajo", "El Duero"], a: 1,
+      sol: "El Tajo.", fact: "Nace en la sierra de Albarracín (Teruel) y desemboca en Lisboa, después de atravesar España y Portugal." },
+    { tipo: "Acertijo", q: "Si me nombras, desaparezco. ¿Qué soy?", o: ["El silencio", "Un secreto", "La noche"], a: 0,
+      sol: "El silencio: basta decir su nombre para romperlo.", fact: "Los acertijos breves se resuelven en menos de un minuto, justo lo que dura una espera corta." }
+  ],
+  entretenimiento: [
+    { tipo: "Acertijo", q: "Cuanto más le quitas, más grande se hace. ¿Qué es?", o: ["Un globo", "Un agujero", "Una sombra"], a: 1,
+      sol: "Un agujero: al sacar tierra, crece.", fact: "Este acertijo aparece, con variantes, en colecciones populares de muchos idiomas." },
+    { tipo: "Pregunta", q: "¿Cuántas casillas tiene un tablero de ajedrez?", o: ["48", "64", "81"], a: 1,
+      sol: "64 casillas, en 8 filas y 8 columnas.", fact: "Las casillas se nombran con una letra y un número, de a1 a h8, y así se pueden anotar partidas enteras." }
+  ],
+  historia: [
+    { tipo: "Pregunta", q: "¿En qué año pisó el ser humano la Luna por primera vez?", o: ["1965", "1969", "1972"], a: 1,
+      sol: "En 1969, con la misión Apolo 11.", fact: "Neil Armstrong y Buzz Aldrin pasaron unas dos horas y media caminando por la superficie lunar." },
+    { tipo: "Curiosidad", q: "¿Verdadero o falso? La miel bien guardada puede durar miles de años.", o: ["Verdadero", "Falso"], a: 0,
+      sol: "Verdadero.", fact: "Se han encontrado tarros de miel comestible en tumbas del antiguo Egipto. Su poca agua y su acidez frenan las bacterias." }
+  ],
+  ciencia: [
+    { tipo: "Pregunta", q: "¿Qué animal puede dormir de pie?", o: ["El búho", "El caballo", "El koala"], a: 1,
+      sol: "El caballo.", fact: "Un mecanismo en sus patas, llamado aparato de sostén, le permite bloquear las articulaciones y dormitar sin caerse." },
+    { tipo: "Curiosidad", q: "¿Verdadero o falso? Un pulpo tiene tres corazones.", o: ["Verdadero", "Falso"], a: 0,
+      sol: "Verdadero.", fact: "Dos bombean sangre a las branquias y uno al resto del cuerpo." }
+  ]
+};
+const RANKING = [
+  { name: "Lucía", pts: 120 }, { name: "Pablo", pts: 90 }, { name: "Marta", pts: 60 },
+  { name: "Andrés", pts: 30 }, { name: "Sara", pts: 10 }
+];
+const PER_LEVEL = 30, OK_PTS = 10, TRY_PTS = 2;
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+const view = document.getElementById("view");
+const etaEl = document.getElementById("eta");
+const playerEl = document.getElementById("player");
+let secs = 6 * 60, arrived = false, points = 0, streak = 0;
+const seen = { cultura: 0, entretenimiento: 0, historia: 0, ciencia: 0 };
+const done = new Set();
+
+const level = p => Math.floor(p / PER_LEVEL) + 1;
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+function today() { const d = new Date(); return `${d.getDate()} de ${MESES[d.getMonth()]}`; }
+
+function renderPlayer() {
+  const pct = (points % PER_LEVEL) / PER_LEVEL * 100;
+  playerEl.innerHTML = `<span class="lvl">Nivel ${level(points)}</span>
+    <span class="bar" role="progressbar" aria-label="Progreso hasta el siguiente nivel" aria-valuenow="${Math.round(pct)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></span>
+    <span class="pts">${points} pts</span>`;
+}
+
+function home() {
+  view.innerHTML = `<section class="screen">
+    <div class="daily"><div class="qmeta">Reto del día</div><div class="d">${today()} · retos nuevos cada día</div></div>
+    <h2>¿Te sobran unos minutos? Elige una temática.</h2>
+    <div class="topics">${TOPICS.map(t => `<button class="topic ${done.has(t.id) ? "done" : ""}" id="t-${t.id}" data-t="${t.id}">
+      <span class="ico" aria-hidden="true">${t.ico}</span><b>${t.t}</b><span class="s">${done.has(t.id) ? "Hecho · otro más" : "+10 pts si aciertas"}</span></button>`).join("")}</div>
+    <div class="actions">${arrivedNote()}<button class="btn ghost" id="go-rank">Ver ranking de la parada</button></div>
+  </section>`;
+  view.querySelectorAll(".topic").forEach(b => b.addEventListener("click", () => ask(b.dataset.t)));
+  document.getElementById("go-rank").addEventListener("click", ranking);
+}
+
+function ask(topic) {
+  const list = RETOS[topic], r = list[seen[topic] % list.length];
+  seen[topic]++;
+  const label = TOPICS.find(t => t.id === topic).t;
+  view.innerHTML = `<section class="screen">
+    <div class="qmeta">${label} · ${r.tipo}</div>
+    <h2>${esc(r.q)}</h2>
+    <div class="opts">${r.o.map((o, i) => `<button class="opt" id="o-${i}" data-i="${i}">${esc(o)}</button>`).join("")}</div>
+    <div id="out" style="display:grid;gap:14px"></div>
+    <div class="actions"><button class="btn ghost" id="back">Elegir otra temática</button></div>
+  </section>`;
+  document.getElementById("back").addEventListener("click", home);
+  view.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => answer(topic, r, +b.dataset.i)));
+}
+
+function answer(topic, r, i) {
+  const ok = i === r.a, before = level(points), gain = ok ? OK_PTS : TRY_PTS;
+  points += gain; streak = ok ? streak + 1 : 0; done.add(topic);
+  renderPlayer();
+  view.querySelectorAll(".opt").forEach((b, j) => {
+    b.disabled = true;
+    if (j === r.a) b.classList.add("ok"); else if (j === i) b.classList.add("ko");
+  });
+  const up = level(points) > before;
+  document.getElementById("out").innerHTML = `
+    <div class="result ${ok ? "" : "ko"}"><div><h3>${ok ? "¡Correcto!" : "Casi"}</h3><p>${esc(r.sol)}</p></div><span class="gain">+${gain} pts</span></div>
+    ${up ? `<div class="levelup">¡Subes a nivel ${level(points)}!</div>` : ""}
+    <div class="fact"><div class="k">¿Sabías que…?</div><p>${esc(r.fact)}</p></div>
+    ${streak >= 2 ? `<p class="small">Llevas ${streak} aciertos seguidos.</p>` : ""}`;
+  const next = TOPICS.find(t => !done.has(t.id)) || TOPICS[(TOPICS.findIndex(t => t.id === topic) + 1) % TOPICS.length];
+  view.querySelector(".actions").innerHTML = `${arrivedNote()}
+    <button class="btn" id="more">Otro reto: ${next.t}</button>
+    <button class="btn ghost" id="go-rank">Ver ranking de la parada</button>`;
+  document.getElementById("more").addEventListener("click", () => ask(next.id));
+  document.getElementById("go-rank").addEventListener("click", ranking);
+}
+
+function ranking() {
+  const rows = [...RANKING, { name: "Tú", pts: points, me: true }].sort((a, b) => b.pts - a.pts || (a.me ? -1 : 1));
+  const pos = rows.findIndex(r => r.me) + 1;
+  view.innerHTML = `<section class="screen">
+    <div class="qmeta">Ranking de la parada · hoy</div>
+    <h2>Vas ${pos}.º de ${rows.length}</h2>
+    <ol class="rank">${rows.map((r, i) => `<li class="${r.me ? "me" : ""}"><span class="n">${i + 1}</span><span>${esc(r.name)} · nivel ${level(r.pts)}</span><span>${r.pts} pts</span></li>`).join("")}</ol>
+    <p class="small">Nombres de ejemplo. El ranking se reinicia cada día con los retos nuevos.</p>
+    <div class="actions">${arrivedNote()}<button class="btn" id="back">Seguir jugando</button></div>
+  </section>`;
+  document.getElementById("back").addEventListener("click", home);
+}
+
+function arrivedNote() {
+  return arrived ? `<div class="arrived">Tu autobús está llegando. Puedes cerrar la página.</div>` : "";
+}
+
+function tick() {
+  if (arrived) return;
+  secs = Math.max(0, secs - 10);
+  etaEl.textContent = secs === 0 ? "Llegando" : `${Math.ceil(secs / 60)} min`;
+  if (secs === 0) {
+    arrived = true;
+    const acts = view.querySelector(".actions");
+    if (acts && !acts.querySelector(".arrived")) acts.insertAdjacentHTML("afterbegin", arrivedNote());
+  }
+}
+setInterval(tick, 1000);
+renderPlayer();
+home();
+</script>
+
+</body>
+</html>
