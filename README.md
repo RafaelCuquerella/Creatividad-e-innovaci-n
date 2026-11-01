@@ -1,7 +1,9 @@
 # Parada en modo reto
 
-Prototipo del trabajo de Creatividad e Innovación (2.º Marketing): ¿cómo hacer que el tiempo de espera del autobús o del metro sea una experiencia divertida o útil?
+## ▶ [Abrir la aplicación](https://rafaelcuquerella.github.io/Creatividad-e-innovaci-n/)
 
-Al escanear el QR de la parada se abre esta web, sin descargar ninguna app: reto del día por temáticas, solución con una curiosidad, puntos, niveles y ranking.
+**https://rafaelcuquerella.github.io/Creatividad-e-innovaci-n/**
 
-Grupo: Ricky, Mariana, Ainhoa, Marc y Rafa.
+Juego interactivo para la espera del autobús o del metro: eliges una temática del reto del día, respondes, ves la solución con una curiosidad y sumas puntos, niveles y posición en el ranking. Funciona en el navegador del móvil, sin descargar nada.
+
+Trabajo de Creatividad e Innovación (2.º Marketing) · Ricky, Mariana, Ainhoa, Marc y Rafa.
